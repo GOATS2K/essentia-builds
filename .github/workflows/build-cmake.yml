@@ -127,6 +127,9 @@ jobs:
       - name: Create artifacts
         run: cmake --install build --prefix build_output --config ${{env.BUILD_TYPE}}
 
+      - name: Copy dependencies
+        run: xcopy packaging/msvc/bin/* build_output/bin/
+
       - name: Compress artifacts 
         uses: vimtor/action-zip@v1
         with:
