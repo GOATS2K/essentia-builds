@@ -1,0 +1,142 @@
+name: Build with CMake
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+env:
+  # CMake build type (Debug, Release, RelWithDebInfo or MinSizeRel)
+  BUILD_TYPE: Debug
+
+jobs:
+  ubuntu:
+    name: Ubuntu (build and test)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          name: wo80/essentia
+          ref: refs/heads/cmake
+          submodules: 'true'
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libeigen3-dev libyaml-dev libfftw3-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev libsamplerate0-dev libtag1-dev libchromaprint-dev
+  
+      - name: Configure
+        run: cmake -B build
+
+      - name: Build
+        run: cmake --build build --config ${{env.BUILD_TYPE}}
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -C ${{env.BUILD_TYPE}}
+
+      - name: Create artifacts
+        run: cmake --install build --prefix build_output --config ${{env.BUILD_TYPE}}
+
+      - name: Compress artifacts 
+        uses: vimtor/action-zip@v1
+        with:
+          files: build_output
+          dest: essentia-ubuntu-amd64.zip
+
+      - name: Create release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          overwrite: true
+          file: essentia-ubuntu-amd64.zip
+
+
+  macos:
+    name: MacOS (build and test)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          name: wo80/essentia
+          ref: refs/heads/cmake
+          submodules: 'true'
+
+      - name: Install dependencies
+        run: brew install eigen libyaml fftw ffmpeg libsamplerate libtag chromaprint
+        
+      - name: Configure
+        run: cmake -B build
+
+      - name: Build
+        run: cmake --build build --config ${{env.BUILD_TYPE}}
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -C ${{env.BUILD_TYPE}}
+
+      - name: Create artifacts
+        run: cmake --install build --prefix build_output --config ${{env.BUILD_TYPE}}
+
+      - name: Compress artifacts 
+        uses: vimtor/action-zip@v1
+        with:
+          files: build_output
+          dest: essentia-macos-arm64.zip
+
+      - name: Create release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          overwrite: true
+          file: essentia-macos-arm64.zip
+
+  windows:
+    name: Windows (build and test)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: cmd
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          name: wo80/essentia
+          ref: refs/heads/cmake
+          submodules: 'true'
+
+      - name: Install dependencies
+        run: .\packaging\build-dependencies-msvc.bat --with-tensorflow
+        
+      - name: Configure
+        run: cmake -B build -DUSE_TENSORFLOW=ON -DCMAKE_PREFIX_PATH=%CD%\packaging\msvc
+
+      - name: Build
+        run: |
+          set PATH=%PATH%;%CD%\packaging\msvc\bin
+          cmake --build build --config ${{env.BUILD_TYPE}} --parallel
+
+      - name: Test
+        run: |
+          set PATH=%PATH%;%CD%\packaging\msvc\bin
+          ctest --test-dir build --output-on-failure -C ${{env.BUILD_TYPE}}
+
+      - name: Create artifacts
+        run: cmake --install build --prefix build_output --config ${{env.BUILD_TYPE}}
+
+      - name: Compress artifacts 
+        uses: vimtor/action-zip@v1
+        with:
+          files: build_output
+          dest: essentia-windows-x64.zip
+
+      - name: Create release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          overwrite: true
+          file: essentia-windows-x64.zip
