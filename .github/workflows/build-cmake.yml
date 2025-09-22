@@ -126,13 +126,19 @@ jobs:
         run: cmake --install build --prefix build_output --config ${{env.BUILD_TYPE}}
 
       - name: Copy dependencies
-        run: xcopy packaging\msvc\bin\* build_output\bin\
+        run: xcopy packaging\msvc\bin\* build_output\bin\ /I /F /Y
+
+      - name: Copy headers
+        run: xcopy packaging\msvc\include\* build_output\include\ /s /e /I /F /Y
+
+      - name: Copy lib files
+        run: xcopy packaging\msvc\lib\* build_output\lib\ /s /e /I /F /Y
 
       - name: Compress artifacts 
         uses: vimtor/action-zip@v1
         with:
           files: build_output
-          dest: essentia-windows-x64.zip
+          dest: essentia-full-windows-x64.zip
 
       - name: Create release
         uses: svenstaro/upload-release-action@v2
@@ -140,4 +146,4 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref }}
           overwrite: true
-          file: essentia-windows-x64.zip
+          file: essentia-full-windows-x64.zip
